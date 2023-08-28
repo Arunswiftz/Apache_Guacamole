@@ -1,0 +1,123 @@
+version: '3.9'
+services:
+  guacamole:
+    image: guacamole/guacamole:latest
+    container_name: guacamole
+    restart: always
+    environment:
+      - GUACD_HOSTNAME=guacd
+      - GUACD_PORT=4822
+      - POSTGRESQL_HOSTNAME=postgres
+      - POSTGRESQL_PORT=5432
+      - POSTGRESQL_DATABASE=guacamole_db
+#     - POSTGRESQL_USER=guacamole
+#     - POSTGRESQL_PASSWORD=Zaq12wsX#2023
+      - POSTGRESQL_USER_FILE=/run/secrets/gm_user     # /opt/docker/secrets/gm_user
+      - POSTGRESQL_PASSWORD_FILE=/run/secrets/gm_pass #/opt/docker/secrets/gm_pass
+
+        #    secrets:
+        #      - source: /run/secrets/gm_user
+        #        target: /etc/guacamole/secrets/gm_user
+        #      - source: /run/secrets/gm_pass
+        #        target: /etc/guacamole/secrets/gm_pass
+    volumes:
+      - guac_data:/etc/guacamole/
+      - /opt/docker/guacamole/guacd.conf:/etc/guacamole/guacd.conf
+      - /opt/docker/guacamole/user-mapping.xml:/etc/guacamole/user-mapping.xml
+      - /opt/docker/guacamole/guacamole.properties:/etc/guacamole/guacamole.properties
+      - /opt/docker/guacamole/extensions/:/etc/guacamole/extensions
+      - /opt/docker/guacamole/lib/:/etc/guacamole/lib
+      - /opt/docker/guacamole/lib/postgresql-42.6.0.jar:/etc/guacamole/lib/postgresql-42.6.0.jar
+      - /opt/docker/secrets/gm/:/etc/guacamole/secrets
+
+    expose:
+      - 8080
+    ports:
+      - 8080:8080/tcp # Guacamole is on :8080/guacamole #enable this if not using nginx .
+    depends_on:
+      - guacd
+      - postgres
+    links:
+      - guacd
+    networks:
+      - gm_net
+    secrets:
+      - gm_user
+      - gm_pass
+
+  guacd:
+    image: guacamole/guacd:latest
+    container_name: guacd
+    restart: always
+    hostname: guacd
+    expose:
+      - 4822
+    ports:
+      - 4822:4822
+    networks:
+      - gm_net
+
+  postgres:
+    image: postgres:latest
+    hostname: postgres
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_DB=postgres
+#     - POSTGRES_USER=masteruser
+#     - POSTGRES_PASSWORD=masteruser
+      - POSTGRES_USER_FILE=/run/secrets/ps_user     #/opt/docker/secrets/ps_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/ps_pass #/opt/docker/secrets/ps_pass
+    volumes:
+      - type: bind   #data binded to host machine
+        source: /opt/docker/postgres/data
+        target: /var/lib/postgresql/data
+          #    secrets:
+          #      - source: /run/secrets/ps_user
+          #        target: /etc/postgres/secrets/ps_user
+          #      - source: /run/secrets/ps_pass
+          #        target: /etc/postgres/secrets/ps_pass    
+      - postgres_data:/etc/postgres/
+      - /opt/docker/secrets/ps/:/etc/postgres/secrets  
+    ports:
+      - 5432:5432
+    networks:
+      - gm_net
+    secrets:
+      - ps_user
+      - ps_pass
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - 80:80
+        #      - 443:443  #enable when using ssl
+    volumes:
+      - nginx_data:/etc/nginx/conf.d/
+      - /opt/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - /opt/docker/nginx/guacamole.conf:/etc/nginx/conf.d/guacamole.conf
+    depends_on:
+      - guacamole
+    networks:
+      - gm_net
+
+secrets:
+  gm_user:
+    file: /opt/docker/.safe/gm_user.txt
+  gm_pass:
+    file: /opt/docker/.safe/gm_pass.txt
+  ps_user:
+    file: /opt/docker/.safe/ps_user.txt
+  ps_pass:
+    file: /opt/docker/.safe/ps_pass.txt
+
+volumes:
+  guac_data:
+  postgres_data:
+  nginx_data:
+
+networks:
+  gm_net:
+    driver: bridge

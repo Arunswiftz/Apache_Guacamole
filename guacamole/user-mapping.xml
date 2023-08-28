@@ -1,0 +1,38 @@
+<user-mapping>
+
+    <!-- Per-user authentication and config information -->
+    <authorize username="test123" password="test@123">
+        <protocol>vnc</protocol>
+        <param name="hostname">192.168.3.90</param>
+        <param name="port">8080</param>
+        <param name="password">VNCPASS</param>
+    </authorize>
+
+    <!-- Another user, but using md5 to hash the password
+         (example below uses the md5 hash of "PASSWORD") -->
+
+    <authorize
+            username="testuser"
+            password="testuser"
+            encoding="md5">
+
+            <!--First authorized connection -->
+            <connection name="guacamole">
+            <protocol>vnc</protocol>
+            <param name="hostname">192.168.3.90</param>
+            <param name="port">8080</param>
+            <param name="password">VNCPASS</param>
+            </connection>
+
+        <!-- Second authorized connection -->
+            <connection name="guacd">
+            <protocol>vnc</protocol>
+            <param name="hostname">192.168.3.90</param>
+            <param name="port">4822</param>
+            <param name="password">VNCPASS</param>
+            </connection>
+
+    </authorize>
+
+</user-mapping>
+
